@@ -1,0 +1,1 @@
+package com.campus.lostfound.repository; import com.campus.lostfound.domain.MatchSuggestion; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface MatchRepository extends JpaRepository<MatchSuggestion,UUID>{List<MatchSuggestion> findAllByOrderByScoreDesc();boolean existsByLostIdAndFoundId(UUID lost,UUID found);}

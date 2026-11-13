@@ -1,0 +1,2 @@
+package com.campus.lostfound.service; import com.campus.lostfound.domain.*; import com.campus.lostfound.repository.NotificationRepository; import org.springframework.stereotype.Service;
+@Service public class NotificationService { private final NotificationRepository repo; public NotificationService(NotificationRepository r){repo=r;} public void notify(User user,String message){repo.save(new AppNotification(user,message));} }

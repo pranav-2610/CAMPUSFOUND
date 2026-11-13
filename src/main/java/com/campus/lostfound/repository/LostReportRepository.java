@@ -1,0 +1,1 @@
+package com.campus.lostfound.repository; import com.campus.lostfound.domain.LostReport; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface LostReportRepository extends JpaRepository<LostReport,UUID>{}

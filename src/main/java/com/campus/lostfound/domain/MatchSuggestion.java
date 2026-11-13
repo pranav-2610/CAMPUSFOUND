@@ -1,0 +1,4 @@
+package com.campus.lostfound.domain; import jakarta.persistence.*; import java.time.Instant; import java.util.UUID;
+@Entity @Table(name="match_suggestions",uniqueConstraints=@UniqueConstraint(columnNames={"lost_id","found_id"})) public class MatchSuggestion {
+ @Id @GeneratedValue(strategy=GenerationType.UUID) private UUID id; @ManyToOne(fetch=FetchType.LAZY,optional=false) private LostReport lost; @ManyToOne(fetch=FetchType.LAZY,optional=false) private FoundReport found; private int score; @Column(nullable=false) private Instant createdAt=Instant.now(); protected MatchSuggestion(){} public MatchSuggestion(LostReport l,FoundReport f,int score){lost=l;found=f;this.score=score;} public UUID getId(){return id;} public LostReport getLost(){return lost;} public FoundReport getFound(){return found;} public int getScore(){return score;}
+}

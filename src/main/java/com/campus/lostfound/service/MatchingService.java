@@ -1,0 +1,10 @@
+package com.campus.lostfound.service;
+import com.campus.lostfound.domain.*; import com.campus.lostfound.repository.*; import org.springframework.stereotype.Service; import org.springframework.transaction.annotation.Transactional; import java.time.temporal.ChronoUnit; import java.util.*; import java.util.stream.*;
+@Service public class MatchingService {
+ private final MatchRepository matches; private final LostReportRepository lost; private final FoundReportRepository found;
+ public MatchingService(MatchRepository m,LostReportRepository l,FoundReportRepository f){matches=m;lost=l;found=f;}
+ @Transactional public void match(ItemReport report){List<? extends ItemReport> other=report instanceof LostReport?found.findAll():lost.findAll(); for(ItemReport candidate:other){LostReport l=report instanceof LostReport?(LostReport)report:(LostReport)candidate;FoundReport f=report instanceof FoundReport?(FoundReport)report:(FoundReport)candidate;if(l.getStatus()!=ReportStatus.ACTIVE||f.getStatus()!=ReportStatus.ACTIVE||matches.existsByLostIdAndFoundId(l.getId(),f.getId()))continue;int score=score(l,f);if(score>=50)matches.save(new MatchSuggestion(l,f,score));}}
+ public int score(ItemReport a,ItemReport b){double cat=a.getCategory().equalsIgnoreCase(b.getCategory())?30:0;double name=similarity(a.getTitle(),b.getTitle())*25;double loc=similarity(a.getLocation(),b.getLocation())*20;long days=Math.abs(ChronoUnit.DAYS.between(a.getIncidentDate(),b.getIncidentDate()));double date=Math.max(0,15*(1-days/30.0));double desc=similarity(a.getDescription(),b.getDescription())*10;return (int)Math.round(cat+name+loc+date+desc);}
+ private double similarity(String a,String b){Set<String>x=tokens(a),y=tokens(b);if(x.isEmpty()||y.isEmpty())return 0;Set<String>i=new HashSet<>(x);i.retainAll(y);Set<String>u=new HashSet<>(x);u.addAll(y);return (double)i.size()/u.size();}
+ private Set<String> tokens(String s){return Arrays.stream(s.toLowerCase().replaceAll("[^a-z0-9 ]"," ").split("\\s+")).filter(t->t.length()>2).collect(Collectors.toSet());}
+}

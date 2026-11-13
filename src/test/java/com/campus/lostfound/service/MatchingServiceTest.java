@@ -1,0 +1,6 @@
+package com.campus.lostfound.service;
+import com.campus.lostfound.domain.*; import com.campus.lostfound.repository.*; import org.junit.jupiter.api.Test; import static org.junit.jupiter.api.Assertions.*; import java.time.LocalDate;
+class MatchingServiceTest {
+ @Test void similarReportsScoreAboveThreshold(){MatchingService service=new MatchingService(null,null,null);User u=new User("Alex","alex@example.edu","hash","A1","Computing",Role.STUDENT);LostReport l=new LostReport("Black Samsung earbuds case","black samsung wireless earbuds case","Electronics","Main Library",LocalDate.of(2026,11,10),null,u,"11:00");FoundReport f=new FoundReport("Black wireless earbuds case","black samsung wireless earbuds case","Electronics","Main Library entrance",LocalDate.of(2026,11,10),null,u,"11:30","Security", "blue sticker");assertTrue(service.score(l,f)>=70);}
+ @Test void unrelatedReportsScoreLow(){MatchingService service=new MatchingService(null,null,null);User u=new User("Alex","alex@example.edu","hash","A1","Computing",Role.STUDENT);LostReport l=new LostReport("Red notebook","lined pages","Books","Gym",LocalDate.of(2026,1,1),null,u,null);FoundReport f=new FoundReport("Silver keys","metal keys","Accessories","Library",LocalDate.of(2026,11,1),null,u,null,null,null);assertTrue(service.score(l,f)<50);}
+}

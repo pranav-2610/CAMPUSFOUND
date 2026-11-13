@@ -1,0 +1,1 @@
+package com.campus.lostfound.repository; import com.campus.lostfound.domain.Handover; import org.springframework.data.jpa.repository.JpaRepository; import java.util.*; public interface HandoverRepository extends JpaRepository<Handover,UUID>{List<Handover> findAllByOrderByScheduledAtDesc();}
