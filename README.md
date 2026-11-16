@@ -1,76 +1,171 @@
-# Campus Found — Lost & Found Management System
+# Campus Lost & Found Management System
 
-A full-stack university lost-and-found application built with Java, Spring Boot, Spring Security, Spring Data JPA, PostgreSQL, HTML, CSS and vanilla JavaScript. The landing page is public; registered community members can create reports, explore matches, and submit claims. Staff and administrators can review claims.
+A full-stack campus platform for reporting lost and found belongings, discovering potential matches, submitting private ownership claims, and coordinating verified returns. The system replaces scattered informal messages with a searchable, accountable workflow for students and campus staff.
 
-## Current scope
+> **Academic project:** Java / Spring Boot backend, PostgreSQL persistence, and a responsive HTML, CSS, and vanilla JavaScript frontend. See [`docs/`](docs/) for requirements and editable system diagrams.
 
-Implemented: BCrypt accounts, session-cookie authentication with CSRF tokens, role-gated admin claim review, lost/found reports with JPA `JOINED` inheritance, public report search/filter, weighted persisted match suggestions, private claim evidence, claim review and handover lifecycle, user dashboard, notifications, and a responsive landing page. The core entity classes map through repositories to PostgreSQL.
+## Project at a glance
 
-Remaining limitations: private evidence image uploads, full audit coverage for every business action, complete analytics, broad workflow/security integration tests, and a few requested UML diagram types. Item detail editing, image uploads, report deactivation, profile management, paginated admin lists, role controls, audit history, and demo seed data are implemented.
+- **Backend:** Java 17+, Spring Boot 3.2, Spring MVC, Spring Security, Spring Data JPA, Hibernate, Bean Validation
+- **Frontend:** HTML5, CSS3, vanilla JavaScript (ES6), Fetch API, Lucide icons
+- **Database:** PostgreSQL; H2 is used only for repository tests
+- **Build and tests:** Maven, JUnit 5
+- **Authentication:** Server-side session cookie, BCrypt password hashing, CSRF token protection
+
+## Features
+
+### Campus members
+
+- Register as a student and sign in with a campus email address.
+- Create lost and found reports with descriptions, category, location, date, and optional photo.
+- Browse active reports and search by keyword, category, and report type.
+- View candidate lost/found matches calculated by the Java matching service.
+- Submit private ownership claims for found reports and track their status.
+- View notifications, update profile details, change password, edit or close their reports.
+- Confirm a scheduled handover after meeting with campus staff.
+
+### Staff and administrators
+
+- Review private claim evidence and approve or reject claims with a review note.
+- Schedule a handover, record owner confirmation, and complete the handover.
+- Browse and deactivate reports, inspect users, view dashboard totals, and review audit history.
+- Assign roles from the administration screen; role management is restricted to administrators.
+
+### Privacy and security
+
+- Passwords are stored using BCrypt hashes.
+- Public registration always creates a `STUDENT` account; it cannot self-assign staff privileges.
+- Staff-only operations are checked on the server, independent of frontend visibility.
+- Sensitive found-item details and private claim evidence are omitted from public and claimant responses.
+- Uploaded item photos are limited to JPEG, PNG, or WebP, capped at 5 MB, and stored with generated filenames.
+- CSRF protection is enabled for state-changing requests.
+
+## Application workflow
+
+1. A member creates a lost or found report.
+2. The application compares it with active reports of the opposite type and stores suggestions scoring at least 50%.
+3. A member submits a claim with private verification details.
+4. Authorized staff reviews the evidence and records a decision.
+5. For an approved claim, staff schedules a handover. The member confirms it, then staff completes it and the item is marked returned.
+
+Matching is advisory only. It does not approve ownership or change item status by itself.
+
+## Object-oriented and database design
+
+`ItemReport` is an abstract JPA entity with `JOINED` inheritance. `LostReport` and `FoundReport` extend the common report model and store their subtype-specific fields in separate tables. Other core entities include `User`, `MatchSuggestion`, `Claim`, `Handover`, `AppNotification`, and `AuditLog`.
+
+Key associations include a user-to-reports one-to-many relationship, a user-to-claims one-to-many relationship, found-report-to-claims one-to-many, match suggestions connecting one lost and one found report, and handovers linked one-to-one with claims. JPA entities use private fields and controlled state-changing methods. REST responses are assembled as DTO-shaped maps rather than serializing entity graphs.
+
+The matcher uses weighted similarity:
+
+| Signal | Weight |
+| --- | ---: |
+| Category match | 30% |
+| Item name token similarity | 25% |
+| Location token similarity | 20% |
+| Date proximity | 15% |
+| Description token similarity | 10% |
+
+The total score is stored as a `MatchSuggestion`; duplicate lost/found pairs are constrained in the database.
 
 ## Requirements
 
-- Java 17+ (Java 21 recommended)
-- Maven 3.8+
-- PostgreSQL 14+
+- Java 17 or newer
+- Maven 3.8 or newer
+- PostgreSQL 14 or newer
 
-Docker Compose is not included because Docker is not available in the development environment.
+## Database setup
 
-## Database and configuration
-
-Create a database and set environment variables:
+Create a local PostgreSQL database:
 
 ```sh
 createdb campus_lost_found
+```
+
+Configure the connection in your shell (adjust the username and password to your local PostgreSQL setup):
+
+```sh
 export DATABASE_URL=jdbc:postgresql://localhost:5432/campus_lost_found
 export DATABASE_USERNAME=postgres
 export DATABASE_PASSWORD=your-local-password
 ```
 
-Hibernate creates/updates tables using `ddl-auto=update` for local development. Use a migration tool and `validate` for deployment. Defaults target a local database with username/password `postgres`.
+The application defaults to the same local database name and `postgres` credentials. Hibernate uses `ddl-auto=update` for convenient development setup. For a production deployment, use database migrations and schema validation instead.
 
-## Run
+## Build, test, and run
+
+Run tests and build the executable Spring Boot JAR:
+
+```sh
+mvn test
+mvn package
+```
+
+Start the application:
 
 ```sh
 mvn spring-boot:run
 ```
 
-Visit [http://localhost:8080](http://localhost:8080). Sign up through the UI. Public registration grants STUDENT only. Assign STAFF or ADMIN roles through a trusted database operator; never accept role assignment from public signup. The app does not ship demo credentials in the default profile. To load development sample data into an empty database, run `mvn spring-boot:run -Dspring-boot.run.profiles=demo` (or run the packaged JAR with `--spring.profiles.active=demo`); demo accounts use `demo1@campus.example` through `demo8@campus.example`, all with password `CampusDemo2026!`. The eighth account is the administrator, and accounts 6–7 are staff. Never use the demo profile for production.
+Open [http://localhost:8080](http://localhost:8080). The landing page and community board are public. Sign up to submit reports and claims. The staff interface is at [http://localhost:8080/admin.html](http://localhost:8080/admin.html) and requires a STAFF or ADMIN account.
+
+## Development sample data
+
+Sample data is opt-in and only inserted if the configured database has no users. Start a fresh development database with:
+
+```sh
+mvn spring-boot:run -Dspring-boot.run.profiles=demo
+```
+
+The demo profile creates eight accounts, 15 lost reports, 15 found reports, match suggestions, pending claims, and a completed handover.
+
+| Account | Login | Password | Role |
+| --- | --- | --- | --- |
+| Student | `demo1@campus.example` | `CampusDemo2026!` | STUDENT |
+| Staff | `demo6@campus.example` | `CampusDemo2026!` | STAFF |
+| Administrator | `demo8@campus.example` | `CampusDemo2026!` | ADMIN |
+
+These shared credentials are for local development only. **Never enable the demo profile in production.**
 
 ## API overview
 
-- `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`
-- `GET /api/public/stats`, `GET /api/public/reports?type=FOUND&q=&category=`
-- `POST /api/reports/lost`, `POST /api/reports/found`, `GET /api/reports/mine`, `GET /api/reports/{id}`, `PUT /api/reports/{id}`, `PUT /api/reports/{id}/deactivate`
-- `GET /api/matches`, `POST /api/claims`, `GET /api/claims/my`
-- `GET /api/notifications`, `GET /api/dashboard`, `PUT /api/users/me`, `PUT /api/users/me/password`
-- Staff/Admin: `GET /api/admin/dashboard`, `GET /api/admin/claims`, `POST /api/admin/claims/{id}/review`, `GET /api/admin/reports`, `GET /api/admin/users`, `GET /api/admin/audit`
+All endpoints are rooted at `/api`. Session authentication is used for member and staff operations.
 
-Authentication is session-based and uses an HTTP-only servlet session cookie. CSRF protection uses a cookie token submitted through the `X-XSRF-TOKEN` header. Do not expose server-private claim evidence in non-admin DTOs.
-
-## Domain and database design
-
-`ItemReport` is abstract and uses JPA `JOINED` inheritance. Common report properties are stored in `item_reports`; lost-only and found-only properties are stored in `lost_reports` and `found_reports`, linked by shared primary keys. `User` is the reporter on a many-to-one association. `MatchSuggestion` links one lost and one found report and enforces a unique pair. `Claim` associates one claimant to one found report and optionally records an authorized reviewer. Notification records belong to their recipient. Lazy relationships and hand-built DTOs avoid exposing entity graphs or serializing private found details.
-
-OOP principles: encapsulated private entity state, an abstract common report with specialized subclasses, enum-driven role/type/status state, and domain methods for controlled claim review/status transitions. Staff and admin use role-based authorization rather than a second user inheritance hierarchy.
-
-## Matching
-
-Potential matches combine category (30%), token Jaccard item-name similarity (25%), location token similarity (20%), date proximity (15% over 30 days), and description token similarity (10%). Scores at or above 50 are persisted once per lost/found pair. Suggestions never approve claims automatically.
-
-## Tests
-
-```sh
-mvn test
-```
-
-Tests cover matching-score examples, handover state transitions, and JPA persistence/retrieval of both joined report subtypes including lazy reporter access. Full authentication, authorization, claim workflow, and PostgreSQL-specific integration coverage is still recommended.
+| Area | Endpoints |
+| --- | --- |
+| Authentication | `POST /auth/register`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` |
+| Public discovery | `GET /public/stats`, `GET /public/reports?type=&q=&category=` |
+| Reports | `POST /reports/lost`, `POST /reports/found`, `GET /reports/{id}`, `GET /reports/mine`, `PUT /reports/{id}`, `PUT /reports/{id}/deactivate` |
+| Matching | `GET /matches` |
+| Claims | `POST /claims`, `GET /claims/my` |
+| Handovers | `POST /handovers/{id}/confirm`, `GET /handovers/my` |
+| Member account | `GET /users/me`, `PUT /users/me`, `PUT /users/me/password` |
+| Notifications | `GET /notifications`, `PUT /notifications/{id}/read`, `PUT /notifications/read-all` |
+| Staff/admin | `GET /admin/dashboard`, `GET /admin/claims`, `POST /admin/claims/{id}/review`, `GET /admin/handovers`, `POST /admin/handovers`, `POST /admin/handovers/{id}/complete`, `GET /admin/reports`, `GET /admin/users`, `PUT /admin/users/{id}/role`, `GET /admin/audit` |
+| Uploads | `POST /uploads` (multipart form field `file`; JPEG/PNG/WebP, maximum 5 MB) |
 
 ## Documentation
 
-See `docs/` for software design, relational mapping, requirements, and editable Mermaid diagrams. This repository is a functional foundation; the checklist above identifies incomplete acceptance criteria honestly.
+- [`docs/requirements.md`](docs/requirements.md): problem statement, actors, functional and non-functional requirements, use cases, and workflow/security constraints.
+- [`docs/diagrams.md`](docs/diagrams.md): editable Mermaid class, ER, use-case, sequence, activity, component, and deployment diagrams.
 
-Staff workflows include claim approval/rejection, scheduling a handover, claimant confirmation, and staff completion. An item is marked returned only after the claimant confirms and staff records completion. Staff review is available at `/admin.html`, including claims, handovers, reports, user roles, and dashboard totals.
+## Tests
 
-## Uploads and account management
-Authenticated users can upload JPG, PNG, and WebP images up to 5 MB through `POST /api/uploads`; files are stored under `uploads/` by generated UUID names and served from `/media/`. Set `-Dcampus.upload.dir=/absolute/private/path` to move storage. Only item images are supported; private claim evidence uploads are not implemented. Profile name/department and password updates are available under `/api/users/me` and `/api/users/me/password`. Owners can deactivate reports. Notification records can be individually marked read.
+The automated suite currently covers representative matching scores, handover state transitions, and JPA persistence/visibility for both report subtypes, including reporter access. Run it with `mvn test`. A live PostgreSQL environment is recommended for final deployment-level integration checks.
+
+## Known limitations
+
+- Claim evidence is text-only; private evidence image uploads are not included.
+- Audit history records key administrative operations, not every read or member action.
+- Analytics are limited to dashboard totals.
+- The project does not include a production database migration, email delivery, or external file-storage provider.
+- Additional end-to-end security and workflow tests would strengthen production readiness.
+
+## Repository structure
+
+```text
+src/main/java/com/campus/lostfound/   Spring Boot controllers, domain, repositories, security, services
+src/main/resources/static/            HTML pages, CSS, and vanilla JavaScript
+src/test/java/                         JUnit tests for domain and persistence behavior
+docs/                                  Requirements and editable Mermaid diagrams
+```
